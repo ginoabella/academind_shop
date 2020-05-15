@@ -1,6 +1,10 @@
+import 'dart:convert';
 import 'package:flutter/foundation.dart';
+import 'package:http/http.dart' as http;
 
 import 'package:shop/providers/cart.dart';
+
+const String kUrl = 'https://shopacademine.firebaseio.com/orders.json';
 
 class OrderItem {
   final String id;
@@ -18,17 +22,61 @@ class Orders with ChangeNotifier {
     return [..._orders];
   }
 
-  void addOrder(List<CartItem> cartProducts, double total) {
+  Future<void> fetchAndSetOrders() async {
+    final List<OrderItem> loadedOrders = [];
+    final response = await http.get(kUrl);
+    final extractedData = json.decode(response.body) as Map<String, dynamic>;
+    if (extractedData == null) {
+      return;
+    }
+    extractedData.forEach((orderId, orderData) {
+      print(orderId);
+      loadedOrders.add(
+        OrderItem(
+          id: orderId,
+          amount: orderData['amount'],
+          dateTime: DateTime.parse(orderData['dateTime']),
+          products: (orderData['products'] as List<dynamic>).map((item) {
+            return CartItem(
+              id: item['id'],
+              price: item['price'],
+              quantity: item['quantity'],
+              title: item['title'],
+            );
+          }).toList(),
+        ),
+      );
+    });
+    _orders = loadedOrders.reversed.toList();
+
+    notifyListeners();
+  }
+
+  Future<void> addOrder(List<CartItem> cartProducts, double total) async {
+    final timeStamp = DateTime.now();
+    final response = await http.post(kUrl,
+        body: json.encode({
+          'amount': total,
+          'dateTime': timeStamp.toIso8601String(),
+          'products': cartProducts
+              .map((cartItem) => {
+                    'id': cartItem.id,
+                    'title': cartItem.title,
+                    'quantity': cartItem.quantity,
+                    'price': cartItem.price,
+                  })
+              .toList(),
+        }));
     _orders.insert(
       0,
       OrderItem(
-        id: DateTime.now().toString(),
+        id: json.decode(response.body)['name'],
         amount: total,
         products: cartProducts,
-        dateTime: DateTime.now(),
+        dateTime: timeStamp,
       ),
     );
-    //cartProducts.clear();
+
     notifyListeners();
   }
 }

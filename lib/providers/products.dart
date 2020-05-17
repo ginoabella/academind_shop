@@ -8,6 +8,9 @@ import 'package:shop/models/http_exception.dart';
 const String kUrl = 'https://shopacademine.firebaseio.com/products.json';
 
 class Products with ChangeNotifier {
+  final String authToken;
+  final String userId;
+
   List<Product> _items = [
     // Product(
     //   id: 'p1',
@@ -43,6 +46,8 @@ class Products with ChangeNotifier {
     // ),
   ];
 
+  Products(this.authToken, this.userId, this._items);
+
   List<Product> get items {
     return [..._items];
   }
@@ -55,15 +60,23 @@ class Products with ChangeNotifier {
     return _items.firstWhere((prod) => prod.id == id);
   }
 
-  Future<void> fetchAndSetProducts() async {
-    //const String kUrl = 'https://shopacademine.firebaseio.com/products.json';
+  Future<void> fetchAndSetProducts([bool filterByUser = false]) async {
+    final filterString =
+        filterByUser ? '&orderBy="creatorId"&equalTo="$userId"' : '';
+    final url = '$kUrl?auth=$authToken$filterString';
     try {
-      final response = await http.get(kUrl);
+      final response = await http.get(url);
       final List<Product> loadedProducts = [];
       final extractedData = json.decode(response.body) as Map<String, dynamic>;
       if (extractedData == null) {
-        return;
+        throw HttpException('Something went wrong!');
       }
+
+      final urlFavorite =
+          'https://shopacademine.firebaseio.com/userFavorites/$userId.json?auth=$authToken';
+      final favoriteResponse = await http.get(urlFavorite);
+      final favoriteData = json.decode(favoriteResponse.body);
+
       extractedData.forEach((productId, productData) {
         loadedProducts.add(Product(
           id: productId,
@@ -71,7 +84,8 @@ class Products with ChangeNotifier {
           description: productData['description'],
           price: productData['price'],
           imageUrl: productData['imageUrl'],
-          isFavorite: productData['isFavorate'],
+          isFavorite:
+              favoriteData != null ? favoriteData[productId] ?? false : false,
         ));
       });
       _items = loadedProducts;
@@ -82,16 +96,16 @@ class Products with ChangeNotifier {
   }
 
   Future<void> addProduct(Product product) async {
-    //const String kUrl = 'https://shopacademine.firebaseio.com/products.json';
+    final url = '$kUrl?auth=$authToken';
     try {
       final response = await http.post(
-        kUrl,
+        url,
         body: json.encode({
           'title': product.title,
           'description': product.description,
           'price': product.price,
           'imageUrl': product.imageUrl,
-          'isFavorate': product.isFavorite,
+          'creatorId': userId,
         }),
       );
       if (response != null) {
@@ -117,7 +131,7 @@ class Products with ChangeNotifier {
     if (productIndex >= 0) {
       try {
         final String url =
-            'https://shopacademine.firebaseio.com/products/$id.json';
+            'https://shopacademine.firebaseio.com/products/$id.json?auth=$authToken';
         await http.patch(url,
             body: json.encode({
               'title': newProduct.title,
@@ -140,7 +154,7 @@ class Products with ChangeNotifier {
     if (productIndex >= 0) {
       try {
         final String url =
-            'https://shopacademine.firebaseio.com/products/$id.json';
+            'https://shopacademine.firebaseio.com/products/$id.json?auth=$authToken';
         final response = await http.delete(url);
         if (response != null && response.statusCode == 200) {
           //print(json.decode(response.statusCode.toString()));

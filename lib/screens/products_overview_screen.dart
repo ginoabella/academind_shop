@@ -14,6 +14,8 @@ enum FilterOptions {
 }
 
 class ProductsOverviewScreen extends StatefulWidget {
+  static const routeName = '/product-overview';
+
   @override
   _ProductsOverviewScreenState createState() => _ProductsOverviewScreenState();
 }
@@ -22,14 +24,19 @@ class _ProductsOverviewScreenState extends State<ProductsOverviewScreen> {
   bool _showOnlyFavorites = false;
   bool _isInit = true;
   bool _isLoading = false;
+  bool _isOnError = false;
 
   @override
   void didChangeDependencies() {
+    _isOnError = false;
     if (_isInit) {
       setState(() => _isLoading = true);
 
       Provider.of<Products>(context).fetchAndSetProducts().then((_) {
         setState(() => _isLoading = false);
+      }).catchError((onError) {
+        setState(() => _isLoading = false);
+        _isOnError = true;
       });
 
       _isInit = false;
@@ -82,7 +89,9 @@ class _ProductsOverviewScreenState extends State<ProductsOverviewScreen> {
       ),
       body: _isLoading
           ? Center(child: CircularProgressIndicator())
-          : ProductsGrid(_showOnlyFavorites),
+          : _isOnError
+              ? Center(child: Text('An Error occured'))
+              : ProductsGrid(_showOnlyFavorites),
     );
   }
 }

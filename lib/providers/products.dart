@@ -44,6 +44,12 @@ class Products with ChangeNotifier {
     //   imageUrl:
     //       'https://upload.wikimedia.org/wikipedia/commons/thumb/1/14/Cast-Iron-Pan.jpg/1024px-Cast-Iron-Pan.jpg',
     // ),
+    // Google Drive shared link image.
+    // https://drive.google.com/file/d/0B58LGksegFdjM1VUdjV4MG1NSzg/view?usp=sharing
+    //
+    // https://drive.google.com/uc?export=view&id=
+    //
+    // https://drive.google.com/uc?export=view&id=0B58LGksegFdjM1VUdjV4MG1NSzg
   ];
 
   Products(this.authToken, this.userId, this._items);
